@@ -36,6 +36,7 @@ app.get('/', (_req, res) => {
 
 // API Routes
 app.use(apiPrefix, apiRouter);
+app.use('/api', apiRouter);
 
 // 404 & Centralized Error Handlers
 app.use(notFoundHandler);
