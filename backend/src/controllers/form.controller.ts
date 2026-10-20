@@ -6,6 +6,10 @@ import {
   AVAILABLE_SERVICES,
   ServiceType,
 } from '../models/form.model';
+import {
+  sendContactNotification,
+  sendUserConfirmation,
+} from '../services/email.service';
 
 export async function getFormSubmissions(_req: Request, res: Response, next: NextFunction) {
   try {
@@ -51,6 +55,14 @@ export async function submitForm(req: Request, res: Response, next: NextFunction
       services: validServices,
     });
 
+    // Send email notifications asynchronously
+    sendContactNotification(newSubmission).catch((err) =>
+      console.error('Failed to send admin notification email:', err)
+    );
+    sendUserConfirmation(newSubmission).catch((err) =>
+      console.error('Failed to send user confirmation email:', err)
+    );
+
     res.status(201).json({
       success: true,
       message: 'Form submitted successfully',
@@ -60,3 +72,4 @@ export async function submitForm(req: Request, res: Response, next: NextFunction
     next(error);
   }
 }
+

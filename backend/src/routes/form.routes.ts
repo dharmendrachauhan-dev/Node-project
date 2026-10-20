@@ -5,5 +5,6 @@ const router = Router();
 
 router.get('/', getFormSubmissions);
 router.post('/', submitForm);
+router.post('/submit', submitForm);
 
 export default router;

@@ -6,6 +6,7 @@ import { requestLogger } from './middlewares/logger.middleware';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import apiRouter from './routes';
 import { connectDB, disconnectDB } from './config/db';
+import { verifyEmailTransporter } from './services/email.service';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ let server: ReturnType<typeof app.listen>;
 
 async function startServer() {
   await connectDB();
+  await verifyEmailTransporter();
 
   server = app.listen(port, () => {
     console.log(`🚀 Server running in ${nodeEnv} mode`);
