@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { requestLogger } from './middlewares/logger.middleware';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import apiRouter from './routes';
+import { connectDB, disconnectDB } from './config/db';
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ app.use(requestLogger);
 app.get('/', (_req, res) => {
   res.json({
     message: 'Welcome to the Express & TypeScript REST API',
-    documentation: `${apiPrefix}/items`,
+    documentation: `${apiPrefix}/forms`,
     health: `${apiPrefix}/health`,
   });
 });
@@ -42,20 +43,34 @@ app.use('/api', apiRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start server
-const server = app.listen(port, () => {
-  console.log(`🚀 Server running in ${nodeEnv} mode`);
-  console.log(`📡 Listening at http://localhost:${port}`);
-  console.log(`🩺 Health check at http://localhost:${port}${apiPrefix}/health`);
-});
+// Connect to MongoDB and start server
+let server: ReturnType<typeof app.listen>;
+
+async function startServer() {
+  await connectDB();
+
+  server = app.listen(port, () => {
+    console.log(`🚀 Server running in ${nodeEnv} mode`);
+    console.log(`📡 Listening at http://localhost:${port}`);
+    console.log(`🩺 Health check at http://localhost:${port}${apiPrefix}/health`);
+  });
+}
+
+startServer();
 
 // Graceful shutdown handling
-function gracefulShutdown(signal: string) {
+async function gracefulShutdown(signal: string) {
   console.log(`\nReceived ${signal}. Shutting down gracefully...`);
-  server.close(() => {
-    console.log('Server closed. Process terminating.');
+  await disconnectDB();
+
+  if (server) {
+    server.close(() => {
+      console.log('Server closed. Process terminating.');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 
   setTimeout(() => {
     console.error('Forced shutdown due to timeout.');

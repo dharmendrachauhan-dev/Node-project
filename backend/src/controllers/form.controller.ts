@@ -1,54 +1,62 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../middlewares/error.middleware';
+import {
+  Form,
+  validateFormInput,
+  AVAILABLE_SERVICES,
+  ServiceType,
+} from '../models/form.model';
 
-export interface FormSubmission {
-  _id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  organization?: string;
-  message?: string;
-  services: string[];
-  createdAt: string;
+export async function getFormSubmissions(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const submissions = await Form.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: submissions,
+      total: submissions.length,
+    });
+  } catch (error) {
+    next(error);
+  }
 }
 
-const submissions: FormSubmission[] = [];
+export async function submitForm(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { name, email, phone, organization, message, services } = req.body;
 
-export function getFormSubmissions(_req: Request, res: Response) {
-  res.status(200).json({
-    success: true,
-    data: submissions,
-    total: submissions.length,
-  });
-}
+    const validation = validateFormInput({
+      name,
+      email,
+      phone,
+      organization,
+      message,
+      services,
+    });
 
-export function submitForm(req: Request, res: Response) {
-  const { name, email, phone, organization, message, services } = req.body;
+    if (!validation.isValid) {
+      const firstErrorMessage = Object.values(validation.errors)[0];
+      throw new AppError(firstErrorMessage || 'Validation error', 400);
+    }
 
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    throw new AppError('Name is required', 400);
+    const validServices = Array.isArray(services)
+      ? (services.filter((s) => AVAILABLE_SERVICES.includes(s as ServiceType)) as ServiceType[])
+      : [];
+
+    const newSubmission = await Form.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone ? String(phone).trim() : '',
+      organization: organization ? String(organization).trim() : '',
+      message: message ? String(message).trim() : '',
+      services: validServices,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Form submitted successfully',
+      data: newSubmission,
+    });
+  } catch (error) {
+    next(error);
   }
-
-  if (!email || typeof email !== 'string' || !email.trim()) {
-    throw new AppError('Email is required', 400);
-  }
-
-  const newSubmission: FormSubmission = {
-    _id: String(Date.now()),
-    name: name.trim(),
-    email: email.trim(),
-    phone: phone ? String(phone).trim() : '',
-    organization: organization ? String(organization).trim() : '',
-    message: message ? String(message).trim() : '',
-    services: Array.isArray(services) ? services : [],
-    createdAt: new Date().toISOString(),
-  };
-
-  submissions.push(newSubmission);
-
-  res.status(201).json({
-    success: true,
-    message: 'Form submitted successfully',
-    data: newSubmission,
-  });
 }
